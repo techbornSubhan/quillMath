@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+      <html lang="en">
+      
+      <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      
+          <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/mathquill/0.10.1/mathquill.css">
+      
+        
+          <style>
+              .container {
+                  max-width: 360.0;
+                  margin: 0 auto;
+               
+              }
+          
+              .math-step {
+                  
+                  display: flex;
+                  align-items: center;
+                  position: relative;
+                  width: 100%;
+                  cursor: text;
+              }
+          
+              .math-field {
+                  flex-grow: 1;
+                  min-height: 40px;
+      
+                  background: none !important;
+                  border: none !important;
+                  outline: none;
+              }
+          
+              .mq-root-block, .mq-math-mode .mq-root-block {
+                  border: none !important;
+              }
+              .mq-editable-field.mq-focused {
+                  box-shadow: none !important;
+                  outline: none !important;
+              }
+      
+                </style>
+          <script>
+              function receiveFromFlutter(data) {
+                  console.log("Data from Flutter:", data);
+                     activeMathField.write(data);
+                    
+                      // activeMathField.focus();
+              }
+      
+      
+      
+      
+      
+      
+      
+       function newFocus() {
+                      activeMathField.focus();
+          };
+       function newLine() {
+                              addStepBelow();
+      
+          };
+      
+      
+      
+      
+      
+      
+              function sendToFlutter() {
+                  if (window.FlutterChannel) {
+                      window.FlutterChannel.postMessage("Hello from JavaScript");
+                  }
+              }
+      
+      
+      
+       function getLatexFlutter() {
+              const allSteps = document.querySelectorAll('.math-field');
+              const latexList = [];
+              allSteps.forEach(field => {
+                  const mathFieldInstance = MQ.MathField(field);
+                  latexList.push(mathFieldInstance.latex());
+              });
+              
+             return latexList;
+          }
+      
+      
+      
+      
+      
+          </script>
+      </head>
+      
+      <body>
+          <div class="container">
+              <div id="steps-container">
+                  <div class="math-step" id="step-1">
+                      <div class="math-field" data-step="1"></div>
+                  </div>
+              </div>
+          </div>
+      
+         
+      
+          <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+          <script src="https://cdnjs.cloudflare.com/ajax/libs/mathquill/0.10.1/mathquill.min.js"></script>
+      
+         <script>
+          var MQ = MathQuill.getInterface(2);
+          var stepCounter = 1;
+          var activeMathField = null;
+          const stepsContainer = document.getElementById('steps-container');
+      
+          initializeStep(document.querySelector('#step-1 .math-field'));
+      
+          document.addEventListener("DOMContentLoaded", function () {
+              setTimeout(() => {
+                  const firstMathField = document.querySelector('#step-1 .math-field');
+                  if (firstMathField) {
+                      focusOnMathField(firstMathField);
+                  }
+              }, 100);
+          });
+      
+          function initializeStep(mathFieldElement) {
+              const mathField = MQ.MathField(mathFieldElement, {
+                  spaceBehavesLikeTab: true,
+                  handlers: {
+                      edit: function () {
+                          activeMathField = mathField;
+                      }
+                  }
+              });
+      
+      
+      
+               mathFieldElement.addEventListener('click', function (e) {
+              activeMathField = mathField; // Set the active math field when clicked
+              console.log('MathQuill field clicked', mathFieldElement.dataset.step);
+          });
+      
+              mathField.config({
+                  readOnly: false // Allows input from both physical and mobile keyboards
+              });
+      
+              // Handle keyboard events for physical keyboards
+              mathFieldElement.addEventListener('keydown', function (event) {
+              console.log("THis ois textsing",event.data)
+                  handleKeyDown(event, mathField, mathFieldElement);
+              });
+      
+              // Handle input event for mobile keyboards
+              mathFieldElement.addEventListener('input', function (event) {
+              
+              console.log("THis ioioiois textsing",event.data)
+      
+                  handleMobileInput(event, mathField);
+              });
+      
+              mathFieldElement.dataset.mathField = mathField;
+          }
+      
+          function handleKeyDown(event, mathField, mathFieldElement) {
+              const stepElement = mathFieldElement.parentElement;
+              const isEmpty = mathField.latex().trim() === '';
+      
+              if (event.key === 'Enter') {
+                  event.preventDefault();
+                  addStepBelow(stepElement);
+              } else if (event.key === 'Backspace' && isEmpty) {
+                  event.preventDefault();
+                  removeStep(stepElement);
+              }
+          }
+      
+          // Handles input from mobile keyboards
+          function handleMobileInput(event, mathField) {
+               if (activeMathField) {
+               if(event.data){
+               
+                      activeMathField.write(event.data);
+                     
+                  event.target.value = "";  
+                  
+                  }
+              }
+          }
+      
+          // function addStepBelow(currentStep = null) {
+          //     const newStep = createNewStep();
+          //     if (currentStep) {
+          //         currentStep.after(newStep);
+          //     } else {
+          //         stepsContainer.appendChild(newStep);
+          //     }
+          //     initializeStep(newStep.querySelector('.math-field'));
+          //     focusOnMathField(newStep.querySelector('.math-field'));
+          // }
+      
+      
+           function addStepBelow(currentStep = null, latexValue = "") {
+              const newStep = createNewStep();
+              if (currentStep) {
+                  currentStep.after(newStep);
+              } else {
+                  stepsContainer.appendChild(newStep);
+              }
+              initializeStep(newStep.querySelector('.math-field'), latexValue);
+              focusOnMathField(newStep.querySelector('.math-field'));
+          }
+      
+          function createNewStep() {
+              const newStep = document.createElement('div');
+              newStep.className = 'math-step';
+              newStep.id = "step-" + (++stepCounter);
+              newStep.innerHTML = '<div class="math-field" data-step=' + stepCounter + " ></div>";
+              return newStep;
+          }
+      
+          function removeStep(stepElement) {
+              if (stepsContainer.children.length > 1) {
+                  const prevStep = stepElement.previousElementSibling || stepElement.nextElementSibling;
+                  stepElement.remove();
+                  if (prevStep) {
+                      focusOnMathField(prevStep.querySelector('.math-field'));
+                  }
+              }
+          }
+      
+          function focusOnMathField(mathFieldElement) {
+              setTimeout(() => {
+                  const mathField = MQ.MathField(mathFieldElement);
+                  mathField.focus();
+                  activeMathField = mathField;
+              }, 50);
+          }
+      
+          window.insertLatex = function (latex) {
+              if (activeMathField) {
+                  if (latex === "\\frac" || latex === "\\sqrt") {
+                      activeMathField.cmd(latex);
+                      activeMathField.write("{}");
+                      activeMathField.keystroke("Left");
+                  } else if (latex === "^" || latex === "_") {
+                      activeMathField.cmd(latex);
+                      activeMathField.write("{}");
+                      activeMathField.keystroke("Left");
+                  } else if (latex === "Enter") {
+                      addStepBelow();
+                  } else {
+                      activeMathField.write(latex);
+                  }
+                  activeMathField.focus();
+              }
+          };
+      
+          window.clearLatex = function () {
+              if (activeMathField) {
+                  activeMathField.latex("");
+                  activeMathField.focus();
+              }
+          };
+      
+          window.backspaceLatex = function () {
+              if (activeMathField) {
+                  activeMathField.keystroke("Backspace");
+              }
+          };
+      
+          function sendToFlutter() {
+              if (window.FlutterChannel) {
+                  window.FlutterChannel.postMessage("Hello from JavaScript");
+              }
+          }
+      </script>
+      
+      </body>
+      
+      
+      </html>
